@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f4ef" />
+    <meta name="description" content="A calmer way to build a running habit, one run at a time." />
+    <title>Run Better</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <main class="shell">
+      <nav class="topbar" aria-label="Main navigation">
+        <a class="brand" href="#home"><span class="brand-mark" aria-hidden="true">↗</span> run better</a>
+        <span class="week-label">YOUR RUNNING SPACE</span>
+      </nav>
+
+      <section class="hero" id="home">
+        <div class="hero-copy">
+          <p class="eyebrow">A LITTLE BETTER, EVERY RUN</p>
+          <h1>Find your<br /><em>own pace.</em></h1>
+          <p class="intro">Make room for movement. Keep showing up. The rest follows.</p>
+          <a class="button" href="#week">See your week <span aria-hidden="true">↓</span></a>
+        </div>
+        <div class="hero-art" aria-hidden="true">
+          <div class="sun"></div><div class="hill hill-back"></div><div class="hill hill-front"></div>
+          <div class="path"></div><span class="art-note">one step<br />at a time</span>
+        </div>
+      </section>
+
+      <section class="week-section" id="week" aria-labelledby="week-title">
+        <div class="section-heading">
+          <div><p class="eyebrow">SHOW UP FOR YOURSELF</p><h2 id="week-title">This week</h2></div>
+          <p class="week-total"><strong id="run-count">0</strong><span>runs logged</span></p>
+        </div>
+        <div class="week-grid" id="week-grid" aria-label="Your runs this week"></div>
+        <form class="run-form" id="run-form">
+          <label for="run-note">A note from your run</label>
+          <div class="form-row"><input id="run-note" name="note" maxlength="100" placeholder="How did it feel?" /><button type="submit">Log a run <span aria-hidden="true">＋</span></button></div>
+          <p class="form-hint" id="form-hint" aria-live="polite">Your runs are saved on this device.</p>
+        </form>
+      </section>
+      <footer><span>Keep it easy. Keep it yours.</span><span>RUN BETTER © 2026</span></footer>
+    </main>
+  </body>
+</html>
