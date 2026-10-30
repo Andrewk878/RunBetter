@@ -1,58 +1,40 @@
-const grid = document.querySelector("#week-grid");
-const count = document.querySelector("#run-count");
-const form = document.querySelector("#run-form");
-const noteInput = document.querySelector("#run-note");
-const hint = document.querySelector("#form-hint");
-const today = new Date();
-const monday = new Date(today);
-const dayOffset = (today.getDay() + 6) % 7;
-monday.setDate(today.getDate() - dayOffset);
-monday.setHours(0, 0, 0, 0);
-const dateKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-const week = Array.from({ length: 7 }, (_, index) => {
-  const date = new Date(monday);
-  date.setDate(monday.getDate() + index);
-  return date;
-});
-const storageKey = `run-better-${dateKey(monday)}`;
-let runs = JSON.parse(localStorage.getItem(storageKey) || "{}");
-const shortDays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"];
-function render() {
-  grid.replaceChildren();
-  week.forEach((date, index) => {
-    const key = dateKey(date);
-    const card = document.createElement("div");
-    card.className = `day-card${key === dateKey(today) ? " today" : ""}`;
-    const dayName = document.createElement("span");
-    dayName.className = "day-name";
-    dayName.textContent = shortDays[index];
-    const dayDate = document.createElement("span");
-    dayDate.className = "day-date";
-    dayDate.textContent = date.getDate();
-    card.append(dayName, dayDate);
-    if (runs[key]) {
-      const dot = document.createElement("span");
-      dot.className = "run-dot";
-      dot.textContent = "✓";
-      dot.title = runs[key];
-      dot.setAttribute("aria-label", `Run logged: ${runs[key] || "well done"}`);
-      card.append(dot);
-    }
-    grid.append(card);
-  });
-  count.textContent = Object.keys(runs).length;
-}
-form.addEventListener("submit", (event) => {
-  event.preventDefault();
-  const key = dateKey(today);
-  if (runs[key]) {
-    hint.textContent = "You already logged a run for today. Come back after your next one.";
-    return;
-  }
-  runs[key] = noteInput.value.trim();
-  localStorage.setItem(storageKey, JSON.stringify(runs));
-  noteInput.value = "";
-  hint.textContent = "Run logged. Nice work showing up for yourself.";
-  render();
-});
-render();
+const KEY = "run-better-v2";
+const AREAS = {
+  running:{label:"Running",icon:"↗",summary:"Build your running habit one outing at a time.",tip:"Start at a pace where you can still talk. A comfortable effort makes it easier to come back tomorrow."},
+  nutrition:{label:"Nutrition",icon:"◉",summary:"Keep simple notes about meals, snacks, and hydration.",tip:"Aim for regular meals and a water bottle nearby. Your log is a reflection tool, not a scorecard."},
+  sleep:{label:"Sleep",icon:"☾",summary:"Notice how your rest supports the rest of your week.",tip:"A steady wind-down routine can make it easier to give yourself enough time to rest."},
+  strength:{label:"Strength",icon:"＋",summary:"Add a little strength work to support everyday movement.",tip:"Choose a load that lets you keep good form. Rest between sets and build gradually."},
+  calendar:{label:"Calendar",icon:"▦",summary:"See your week and make a realistic plan.",tip:"A plan should leave room for rest and real life. Moving a session is still taking care of your routine."},
+  "my-page":{label:"My page",icon:"✳",summary:"Make a small dashboard from the things you care about.",tip:"Add the areas you want to see together. Your custom page is saved on this device."}
+};
+const PLANS={beginner:{title:"Start easy, build steadily.",text:"Try a relaxed run/walk session: alternate short jogs with comfortable walking for 20 minutes. Rest if you need it.",target:3},experienced:{title:"Keep your rhythm, add intention.",text:"Plan one easy run, one focused workout, and one longer comfortable effort this week. Adjust around recovery.",target:5}};
+const ICONS=Object.fromEntries(Object.entries(AREAS).map(([key,item])=>[key,item.icon]));
+const content=document.querySelector("#page-content"), levelSelect=document.querySelector("#level-select");
+const dateKey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+const todayKey=dateKey(new Date()), fullDate=new Intl.DateTimeFormat(undefined,{weekday:"long",month:"long",day:"numeric"}), shortDate=new Intl.DateTimeFormat(undefined,{month:"short",day:"numeric"});
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+function load(){try{const x=JSON.parse(localStorage.getItem(KEY)||"{}");return{level:x.level==="experienced"?"experienced":"beginner",logs:Array.isArray(x.logs)?x.logs:[],widgets:Array.isArray(x.widgets)?x.widgets:[]}}catch{return{level:"beginner",logs:[],widgets:[]}}}
+let state=load(), page="home";
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function week(){const d=new Date();d.setDate(d.getDate()-(d.getDay()+6)%7);d.setHours(0,0,0,0);return Array.from({length:7},(_,i)=>{const x=new Date(d);x.setDate(x.getDate()+i);return x})}
+function logsFor(date){return state.logs.filter(x=>x.date===date)}
+function recent(logs){if(!logs.length)return'<p class="empty-state">Your activity will appear here after you log something.</p>';return `<div class="activity-list">${logs.map(x=>`<div class="activity-item"><span class="activity-icon">${ICONS[x.area]||"•"}</span><div class="activity-copy"><strong>${esc(x.title)}</strong><span>${esc([x.value,x.detail].filter(Boolean).join(" · "))}</span></div><span class="activity-date">${esc(shortDate.format(new Date(`${x.date}T12:00:00`)))}</span></div>`).join("")}</div>`}
+function field(label,name,type="text",opts={}){return `<div class="field"><label for="f-${name}">${label}</label><input id="f-${name}" name="${name}" type="${type}" ${opts.required?"required":""} ${opts.min!=null?`min="${opts.min}"`:""} ${opts.max!=null?`max="${opts.max}"`:""} ${opts.step?`step="${opts.step}"`:""} ${opts.placeholder?`placeholder="${esc(opts.placeholder)}"`:""}></div>`}
+function select(label,name,opts){return `<div class="field"><label for="f-${name}">${label}</label><select id="f-${name}" name="${name}">${opts.map(x=>`<option value="${esc(x[0])}">${esc(x[1])}</option>`).join("")}</select></div>`}
+function intro(key){return `<header class="page-heading"><p class="eyebrow">YOUR ${AREAS[key].label.toUpperCase()} SPACE</p><h1>${AREAS[key].label}</h1><p>${AREAS[key].summary}</p></header>`}
+function planCard(){const plan=PLANS[state.level],count=week().reduce((n,d)=>n+logsFor(dateKey(d)).filter(x=>x.area==="running").length,0),pct=Math.min(100,Math.round(count/plan.target*100));return `<section class="dashboard-hero"><div class="hero-card"><span class="orbit"></span><p class="eyebrow">YOUR ${state.level.toUpperCase()} PLAN</p><h2>${plan.title}</h2><p>${plan.text}</p><a class="button" href="#running" data-page="running">Open running ↗</a></div><div class="progress-card"><div class="progress-top"><div><p class="eyebrow">THIS WEEK</p><div class="progress-caption">Runs logged</div></div><span class="progress-number">${count}<small style="font:14px system-ui;color:#9aa39a"> / ${plan.target}</small></span></div><div><div class="progress-track"><div class="progress-fill" style="width:${pct}%"></div></div><p class="progress-note">${count>=plan.target?"You reached your running goal. Make room for recovery too.":`${plan.target-count} more ${plan.target-count===1?"run":"runs"} to your weekly target. Your pace is your own.`}</p></div></div></section>`}
+function dashboard(){const days=week().map(d=>{const k=dateKey(d),has=logsFor(k).some(x=>x.area==="running");return `<div class="week-day${k===todayKey?" today":""}"><span>${new Intl.DateTimeFormat(undefined,{weekday:"short"}).format(d).toUpperCase()}</span><strong>${d.getDate()}</strong><i class="week-mark">${has?"● RUN":""}</i></div>`}).join("");return `<section class="welcome-row"><div><p class="eyebrow">YOUR PERSONAL WELLNESS SPACE</p><h1>Find your <em>own pace.</em></h1><p class="lead">Small, steady choices add up. Keep track of the things that help you feel good.</p></div><span class="today-chip">${esc(fullDate.format(new Date()))}</span></section>${planCard()}<div class="section-head"><h2>Your six areas</h2><p>Choose what you want to work on today</p></div><section class="area-grid">${Object.entries(AREAS).map(([k,a])=>`<button class="area-card" data-page="${k}"><span class="area-card-top"><span class="area-icon">${a.icon}</span><span>↗</span></span><h3>${a.label}</h3><p>${a.summary}</p></button>`).join("")}</section><section class="lower-grid"><div class="panel"><div class="panel-title"><h3>Your week</h3><span>Running activity</span></div><div class="week-strip">${days}</div><div class="section-head"><h2 style="font:400 20px Georgia,serif">Recent activity</h2></div>${recent(state.logs.slice().sort((a,b)=>b.createdAt-a.createdAt).slice(0,4))}</div><div class="panel recommendation"><p class="eyebrow">A GENTLE REMINDER</p><h3>Progress has many forms.</h3><p>Rest, a good meal, a short walk, or showing up for a few minutes all count as taking care of yourself. Use these areas in whatever way feels useful.</p></div></section>`}
+function formFields(k){if(k==="running")return `<div class="field-row">${field("Distance in km (optional)","distance","number",{min:0,step:"0.1",placeholder:"3.2"})}${field("Duration in minutes","duration","number",{min:1,required:true,placeholder:"25"})}</div><div class="field-row">${select("Effort","effort",[["Easy","Easy"],["Steady","Steady"],["Hard","Hard"]])}${field("Date","date","date",{required:true})}</div><div class="field"><label for="f-note">How did it feel?</label><textarea id="f-note" name="note" maxlength="180" placeholder="Optional note"></textarea></div>`;
+if(k==="nutrition")return `<div class="field-row">${select("Meal or drink","meal",[["Breakfast","Breakfast"],["Lunch","Lunch"],["Dinner","Dinner"],["Snack","Snack"],["Water","Water"]])}${field("Date","date","date",{required:true})}</div><div class="field"><label for="f-description">What did you have?</label><textarea id="f-description" name="description" maxlength="180" required placeholder="A quick note is enough"></textarea></div>`;
+if(k==="sleep")return `<div class="field-row">${field("Hours slept","hours","number",{min:0,max:24,step:"0.25",required:true,placeholder:"7.5"})}${select("How rested do you feel?","quality",[["Rested","Rested"],["Okay","Okay"],["Tired","Tired"]])}</div><div class="field-row">${field("Date","date","date",{required:true})}${field("Note (optional)","note","text",{placeholder:"Wind-down routine"})}</div>`;
+if(k==="strength")return `<div class="field-row">${field("Exercise","exercise","text",{required:true,placeholder:"Bodyweight squats"})}${field("Sets","sets","number",{min:1,step:"1",placeholder:"3"})}</div><div class="field-row">${field("Reps per set","reps","number",{min:1,step:"1",placeholder:"8"})}${field("Date","date","date",{required:true})}</div><div class="field"><label for="f-note">Notes (optional)</label><textarea id="f-note" name="note" maxlength="180" placeholder="Weight, form cues, or how it felt"></textarea></div>`;
+return `<div class="field-row">${field("Plan for","date","date",{required:true})}${select("Area","planned-area",[["running","Running"],["nutrition","Nutrition"],["sleep","Sleep"],["strength","Strength"],["rest","Rest / personal"]])}</div><div class="field"><label for="f-title">Plan title</label><input id="f-title" name="title" required maxlength="70" placeholder="Easy 20-minute run"></div><div class="field"><label for="f-note">Note (optional)</label><textarea id="f-note" name="note" maxlength="150"></textarea></div>`}
+function areaPage(k){if(k==="calendar")return calendarPage();if(k==="my-page")return myPage();const a=AREAS[k],logs=state.logs.filter(x=>x.area===k).sort((x,y)=>y.createdAt-x.createdAt).slice(0,6),titles={running:"a run",nutrition:"a meal or drink",sleep:"your sleep",strength:"a strength session"};return `${intro(k)}<div class="content-columns"><section class="panel form-panel"><h2>Log ${titles[k]}</h2><p>Your entry stays on this device and is only visible to you.</p><form class="entry-form" data-area="${k}">${formFields(k)}<button class="primary-button">Save entry ＋</button></form></section><aside class="tip-card"><p class="eyebrow">A SMALL SUGGESTION</p><h3>${k==="running"?PLANS[state.level].title:"Keep it simple."}</h3><p>${k==="running"?PLANS[state.level].text:a.tip}</p></aside></div><section class="panel log-stack"><div class="panel-title"><h3>Recent ${a.label.toLowerCase()}</h3><span>${logs.length} ${logs.length===1?"entry":"entries"}</span></div>${recent(logs)}</section>`}
+function calendarPage(){const ds=week().map(d=>{const k=dateKey(d);return `<div class="calendar-day${k===todayKey?" today":""}"><div class="date-name">${new Intl.DateTimeFormat(undefined,{weekday:"short"}).format(d)}</div><div class="date-number">${d.getDate()}</div>${logsFor(k).map(x=>`<span class="calendar-event">${ICONS[x.area]||"•"} ${esc(x.title)}</span>`).join("")}</div>`}).join("");const plans=state.logs.filter(x=>x.area==="calendar").sort((a,b)=>a.date.localeCompare(b.date)).slice(0,6);return `${intro("calendar")}<section class="panel"><div class="panel-title"><h3>This week</h3><span>Logs and plans by day</span></div><div class="calendar-grid">${ds}</div></section><div class="content-columns" style="margin-top:16px"><section class="panel form-panel"><h2>Add a plan</h2><p>Put a session, rest day, or personal goal on your calendar.</p><form class="entry-form" data-area="calendar">${formFields("calendar")}<button class="primary-button">Add to calendar ＋</button></form></section><section class="panel"><div class="panel-title"><h3>Planned sessions</h3><span>${plans.length} shown</span></div>${recent(plans)}</section></div>`}
+function myPage(){const opts=Object.entries(AREAS).filter(([k])=>k!=="my-page").map(([k,a])=>`<option value="${k}">${a.label}</option>`).join("");const widgets=state.widgets.map(w=>{const logs=state.logs.filter(x=>x.area===w.area).sort((a,b)=>b.createdAt-a.createdAt).slice(0,2);return `<article class="widget-card"><div class="widget-card-head"><h3>${esc(w.title)}</h3><button class="widget-remove" data-remove="${esc(w.id)}" aria-label="Remove ${esc(w.title)}">×</button></div><p>${AREAS[w.area]?.label||"Activity"} · ${state.logs.filter(x=>x.area===w.area).length} entries</p>${recent(logs)}</article>`}).join("");return `${intro("my-page")}<section class="panel form-panel"><h2>Build your page</h2><p>Choose a name and area for an activity widget. You can remove it any time.</p><form class="entry-form" data-area="widget"><div class="field-row">${field("Widget name","widget-title","text",{required:true,placeholder:"My weekly runs"})}<div class="field"><label for="f-widget-area">Show activity from</label><select id="f-widget-area" name="widget-area">${opts}</select></div></div><button class="primary-button">Add to my page ＋</button></form></section><section class="widget-grid">${widgets||`<div class="panel" style="grid-column:1/-1;margin-top:14px"><p class="empty-state">Your page is empty. Add a widget above to keep activities you care about in one place.</p></div>`}</section><aside class="tip-card" style="margin-top:16px"><p class="eyebrow">YOUR PAGE, YOUR WAY</p><h3>Keep the useful bits close.</h3><p>${AREAS["my-page"].tip}</p></aside>`}
+function render(){levelSelect.value=state.level;document.querySelector("#today-label").textContent=fullDate.format(new Date()).toUpperCase();content.innerHTML=page==="home"?dashboard():areaPage(page);document.querySelectorAll(".nav-link").forEach(b=>b.classList.toggle("active",b.dataset.page===page));content.querySelectorAll('input[name="date"]').forEach(i=>{if(!i.value)i.value=todayKey})}
+function openPage(next){page=next;render();content.focus({preventScroll:true})}
+function entry(k,d){let title="",value="",detail="",date=d.get("date")||todayKey;if(k==="running"){title="Run";value=`${d.get("duration")} min${d.get("distance")?` · ${d.get("distance")} km`:""}`;detail=[d.get("effort"),d.get("note")].filter(Boolean).join(" · ")}if(k==="nutrition"){title=d.get("meal");value=d.get("description")}if(k==="sleep"){title="Sleep";value=`${d.get("hours")} hours · ${d.get("quality")}`;detail=d.get("note")}if(k==="strength"){title=d.get("exercise");value=[d.get("sets")&&`${d.get("sets")} sets`,d.get("reps")&&`${d.get("reps")} reps`].filter(Boolean).join(" · ");detail=d.get("note")}if(k==="calendar"){title=d.get("title");value=d.get("planned-area")==="rest"?"Rest / personal":AREAS[d.get("planned-area")]?.label||"Plan";detail=d.get("note")}return{id:String(Date.now())+Math.random().toString(36).slice(2,7),area:k,date,title:String(title||"Activity"),value:String(value||""),detail:String(detail||""),createdAt:Date.now()}}
+document.addEventListener("click",e=>{const link=e.target.closest("[data-page]");if(link){e.preventDefault();openPage(link.dataset.page);return}const remove=e.target.closest("[data-remove]");if(remove){state.widgets=state.widgets.filter(x=>x.id!==remove.dataset.remove);save();render()}});
+document.addEventListener("submit",e=>{const form=e.target.closest("form[data-area]");if(!form)return;e.preventDefault();const d=new FormData(form),k=form.dataset.area;if(k==="widget"){state.widgets.push({id:String(Date.now())+Math.random().toString(36).slice(2,5),title:String(d.get("widget-title")||"My activity").trim(),area:String(d.get("widget-area")||"running")});save();render();return}state.logs.push(entry(k,d));save();render()});
+levelSelect.addEventListener("change",()=>{state.level=levelSelect.value;save();render()});document.addEventListener("keydown",e=>{if(e.key==="Escape"&&page!=="home")openPage("home")});render();
